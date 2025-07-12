@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaUpload, FaTrash, FaImage } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { createListing } from "./services/listingService";
+import Navbar from "./components/Navbar";
 
 const categories = [
   "Tops",
@@ -132,67 +133,7 @@ export default function AddProductPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur shadow-sm">
-        <nav
-          className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3"
-          aria-label="Main navigation"
-        >
-          <div className="flex items-center gap-2">
-            <img src="/logo192.png" alt="Swapify Logo" className="h-8 w-8" />
-            <span className="font-bold text-xl text-indigo-700 tracking-tight">
-              Swapify
-            </span>
-          </div>
-          <ul className="hidden md:flex gap-8 text-slate-700 font-medium">
-            <li>
-              <a href="#" className="hover:text-indigo-600 transition">
-                Home
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-indigo-600 transition">
-                Browse
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-indigo-600 transition">
-                Login
-              </a>
-            </li>
-            <li>
-              <a
-                href="#"
-                className="hover:bg-indigo-600 hover:text-white border border-indigo-600 rounded px-4 py-1 transition"
-              >
-                Sign Up
-              </a>
-            </li>
-          </ul>
-          {/* Hamburger for mobile */}
-          <div className="md:hidden">
-            <button
-              aria-label="Open menu"
-              className="text-2xl text-indigo-700 focus:outline-none"
-            >
-              <svg
-                width="28"
-                height="28"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </nav>
-      </header>
+      <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">

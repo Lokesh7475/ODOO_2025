@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaUserCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { loginUser } from "./services/userService";
+import { useAuth } from "./context/AuthContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
@@ -64,15 +66,12 @@ export default function LoginPage() {
 
       const response = await loginUser(credentials);
 
-      // Store tokens in localStorage
-      if (response.data?.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-        localStorage.setItem("refreshToken", response.data.refreshToken);
-      }
-
-      // Store user info if needed
-      if (response.data?.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+      // Use auth context to login
+      if (response.data?.user && response.data?.accessToken) {
+        login(response.data.user, {
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        });
       }
 
       // Redirect to dashboard

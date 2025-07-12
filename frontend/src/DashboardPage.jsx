@@ -14,9 +14,12 @@ import {
   deleteListing,
   toggleListingStatus,
 } from "./services/dashboardService";
+import Navbar from "./components/Navbar";
+import { useAuth } from "./context/AuthContext";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("listings");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -48,7 +51,24 @@ export default function DashboardPage() {
         navigate("/login");
         return;
       }
-      setError("Failed to load dashboard data. Please try again.");
+      // Use actual user data from auth context if API fails
+      if (user) {
+        setUserInfo({
+          username: user.username,
+          fullName: user.fullName,
+          email: user.email,
+          avatar: user.avatar,
+          location: user.location || "Not specified",
+          role: user.role || "User",
+        });
+      }
+      setStatistics({
+        totalTransactions: 0,
+        boughtCount: 0,
+        soldCount: 0,
+        swappedCount: 0,
+      });
+      setUserHistory([]);
     } finally {
       setLoading(false);
     }
@@ -158,67 +178,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur shadow-sm">
-        <nav
-          className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3"
-          aria-label="Main navigation"
-        >
-          <div className="flex items-center gap-2">
-            <img src="/logo192.png" alt="Swapify Logo" className="h-8 w-8" />
-            <span className="font-bold text-xl text-indigo-700 tracking-tight">
-              Swapify
-            </span>
-          </div>
-          <ul className="hidden md:flex gap-8 text-slate-700 font-medium">
-            <li>
-              <Link to="/" className="hover:text-indigo-600 transition">
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link to="/browse" className="hover:text-indigo-600 transition">
-                Browse
-              </Link>
-            </li>
-            <li>
-              <Link to="/login" className="hover:text-indigo-600 transition">
-                Login
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/register"
-                className="hover:bg-indigo-600 hover:text-white border border-indigo-600 rounded px-4 py-1 transition"
-              >
-                Sign Up
-              </Link>
-            </li>
-          </ul>
-          {/* Hamburger for mobile */}
-          <div className="md:hidden">
-            <button
-              aria-label="Open menu"
-              className="text-2xl text-indigo-700 focus:outline-none"
-            >
-              <svg
-                width="28"
-                height="28"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </nav>
-      </header>
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Error Message */}
@@ -229,13 +189,13 @@ export default function DashboardPage() {
         )}
 
         {/* Profile Section */}
-        {userInfo && (
+        {(userInfo || user) && (
           <section className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <div className="flex flex-col md:flex-row items-center gap-6">
-              {userInfo.avatar ? (
+              {userInfo?.avatar || user?.avatar ? (
                 <img
-                  src={userInfo.avatar}
-                  alt={userInfo.fullName}
+                  src={userInfo?.avatar || user?.avatar}
+                  alt={userInfo?.fullName || user?.fullName}
                   className="w-20 h-20 rounded-full object-cover"
                 />
               ) : (
@@ -243,11 +203,15 @@ export default function DashboardPage() {
               )}
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-2xl font-bold text-slate-800 mb-1">
-                  {userInfo.fullName}
+                  {userInfo?.fullName || user?.fullName || "User"}
                 </h1>
-                <p className="text-slate-600 mb-2">{userInfo.email}</p>
-                {userInfo.location && (
-                  <p className="text-slate-500 mb-4">📍 {userInfo.location}</p>
+                <p className="text-slate-600 mb-2">
+                  {userInfo?.email || user?.email}
+                </p>
+                {(userInfo?.location || user?.location) && (
+                  <p className="text-slate-500 mb-4">
+                    📍 {userInfo?.location || user?.location}
+                  </p>
                 )}
                 <button className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition font-medium">
                   Edit Profile

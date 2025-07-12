@@ -8,15 +8,18 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { registerUser } from "./services/userService";
+import { useAuth } from "./context/AuthContext";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     username: "",
     password: "",
     confirmPassword: "",
+    location: "",
   });
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -91,6 +94,10 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return false;
     }
+    if (!formData.location.trim()) {
+      setError("Location is required");
+      return false;
+    }
     if (!avatar) {
       setError("Please upload a profile picture");
       return false;
@@ -115,23 +122,31 @@ export default function RegisterPage() {
         email: formData.email,
         username: formData.username,
         password: formData.password,
+        location: formData.location,
         avatar: avatar,
       };
 
       const response = await registerUser(userData);
 
-      setSuccess("Registration successful! Redirecting to login...");
+      setSuccess("Registration successful! Logging you in...");
 
-      // Store tokens if provided
-      if (response.data?.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-        localStorage.setItem("refreshToken", response.data.refreshToken);
+      // Auto-login the user after successful registration
+      if (response.data?.accessToken && response.data?.user) {
+        login(response.data.user, {
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        });
+
+        // Redirect to dashboard after 1 second
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
+      } else {
+        // Fallback to login page if no tokens
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       }
-
-      // Redirect to login page after 2 seconds
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
     } catch (err) {
       const errorMessage =
         err.response?.data?.message || "Registration failed. Please try again.";
@@ -226,6 +241,16 @@ export default function RegisterPage() {
             onChange={handleInputChange}
             className="px-4 py-3 rounded border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 bg-slate-50"
             autoComplete="username"
+            disabled={isSubmitting}
+          />
+          <input
+            type="text"
+            name="location"
+            placeholder="Location (e.g., New York, NY)"
+            value={formData.location}
+            onChange={handleInputChange}
+            className="px-4 py-3 rounded border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 bg-slate-50"
+            autoComplete="off"
             disabled={isSubmitting}
           />
           <input

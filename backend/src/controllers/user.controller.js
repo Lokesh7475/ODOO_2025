@@ -35,11 +35,11 @@ const registerUser = asyncHandler(async (req, res) => {
   // check for user creation
   // return response
 
-  const { fullName, email, username, password } = req.body;
+  const { fullName, email, username, password, location } = req.body;
   console.log(`email : ${email}`);
 
   if (
-    [fullName, email, username, password].some((field) => field?.trim() === "")
+    [fullName, email, username, password, location].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(400, "something is Empty");
   }
@@ -68,6 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     username: username.toLowerCase(),
+    location,
   });
 
   const createdUser = await User.findById(user._id).select(

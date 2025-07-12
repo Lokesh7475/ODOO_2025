@@ -7,6 +7,7 @@ export const registerUser = async (userData) => {
   formData.append("email", userData.email);
   formData.append("username", userData.username);
   formData.append("password", userData.password);
+  formData.append("location", userData.location);
   if (userData.avatar) {
     formData.append("avatar", userData.avatar);
   }

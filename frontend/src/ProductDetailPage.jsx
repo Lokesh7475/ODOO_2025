@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { FaHeart, FaUserCircle, FaArrowLeft, FaImage } from "react-icons/fa";
 import { getListing } from "./services/listingService";
+import Navbar from "./components/Navbar";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -134,67 +135,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur shadow-sm">
-        <nav
-          className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3"
-          aria-label="Main navigation"
-        >
-          <div className="flex items-center gap-2">
-            <img src="/logo192.png" alt="Swapify Logo" className="h-8 w-8" />
-            <span className="font-bold text-xl text-indigo-700 tracking-tight">
-              Swapify
-            </span>
-          </div>
-          <ul className="hidden md:flex gap-8 text-slate-700 font-medium">
-            <li>
-              <Link to="/" className="hover:text-indigo-600 transition">
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link to="/browse" className="hover:text-indigo-600 transition">
-                Browse
-              </Link>
-            </li>
-            <li>
-              <Link to="/login" className="hover:text-indigo-600 transition">
-                Login
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/register"
-                className="hover:bg-indigo-600 hover:text-white border border-indigo-600 rounded px-4 py-1 transition"
-              >
-                Sign Up
-              </Link>
-            </li>
-          </ul>
-          {/* Hamburger for mobile */}
-          <div className="md:hidden">
-            <button
-              aria-label="Open menu"
-              className="text-2xl text-indigo-700 focus:outline-none"
-            >
-              <svg
-                width="28"
-                height="28"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </nav>
-      </header>
+      <Navbar />
 
       {/* Main Product Section */}
       <main className="max-w-7xl mx-auto px-4 py-10">
