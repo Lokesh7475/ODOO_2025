@@ -1,23 +1,29 @@
-import "./App.css";
-import axios from "axios";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import LandingPage from "./LandingPage";
+import LoginPage from "./LoginPage";
+import RegisterPage from "./RegisterPage";
+import ItemListingPage from "./ItemListingPage";
+import ProductDetailPage from "./ProductDetailPage";
+import DashboardPage from "./DashboardPage";
+import AdminPage from "./AdminPage";
+import AddProductPage from "./AddProductPage";
 
 function App() {
-  function login() {
-    axios
-      .post("http://localhost:8000/api/v1/users/login", {
-        // "fullName":"odoo-user-jassu-0001",
-        // "email":"odoouser@gmail.com",
-        username: "jassu2",
-        password: "jassudajanam2",
-      })
-      .then((res) => console.log(res))
-      .catch((e) => console.log(e));
-  }
   return (
-    <div className="App">
-      <h1>Hello</h1>
-      <button onClick={login}>click to login</button>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/browse" element={<ItemListingPage />} />
+        <Route path="/items/:id" element={<ProductDetailPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/add-product" element={<AddProductPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 
