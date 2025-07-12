@@ -5,27 +5,32 @@ import { FaLeaf, FaTshirt, FaStar } from "react-icons/fa";
 
 const featuredItems = [
   {
-    img: "https://source.unsplash.com/200x250/?clothes,shirt",
+    img: "img1.jpeg",
     name: "Floral Summer Dress",
     tag: "Available to Swap",
   },
   {
-    img: "https://source.unsplash.com/200x250/?clothes,jacket",
+    img: "img2.webp",
     name: "Denim Jacket",
     tag: "Available to Swap",
   },
   {
-    img: "https://source.unsplash.com/200x250/?clothes,hoodie",
+    img: "img3.jpg",
     name: "Cozy Hoodie",
     tag: "Available to Swap",
   },
   {
-    img: "https://source.unsplash.com/200x250/?clothes,skirt",
+    img: "img4.jpeg",
     name: "Pleated Skirt",
     tag: "Available to Swap",
   },
   {
-    img: "https://source.unsplash.com/200x250/?clothes,jeans",
+    img: "img5.jpg",
+    name: "Classic Jeans",
+    tag: "Available to Swap",
+  },
+  {
+    img: "img8.webp",
     name: "Classic Jeans",
     tag: "Available to Swap",
   },
@@ -81,7 +86,7 @@ export default function LandingPage() {
         {/* Hero Image */}
         <div className="flex-1 flex justify-center z-10">
           <img
-            src="https://source.unsplash.com/400x400/?clothes,fashion"
+            src="image.jpg"
             alt="Hero"
             className="rounded-2xl shadow-lg w-72 h-72 object-cover"
           />

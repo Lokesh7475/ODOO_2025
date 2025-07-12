@@ -52,6 +52,6 @@ export const searchListings = async (params = {}) => {
 
 // Toggle listing status
 export const toggleListingStatus = async (id) => {
-  const response = await api.patch(`/listings/${id}/toggle`);
+  const response = await api.patch(`/listings/${id}/status`);
   return response.data;
 }; 

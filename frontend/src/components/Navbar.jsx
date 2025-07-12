@@ -19,7 +19,7 @@ export default function Navbar() {
         aria-label="Main navigation"
       >
         <div className="flex items-center gap-2">
-          <img src="/logo192.png" alt="Swapify Logo" className="h-8 w-8" />
+          <img src="/logo.avif" alt="Swapify Logo" className="h-8 w-8" />
           <span className="font-bold text-xl text-indigo-700 tracking-tight">
             Swapify
           </span>

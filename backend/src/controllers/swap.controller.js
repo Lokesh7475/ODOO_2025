@@ -3,111 +3,148 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { SwapRequest } from "../models/swaprequests.models.js";
 import { Item } from "../models/item.models.js";
-import { User } from "../models/user.models.js";
+import { ListingRequest } from "../models/listing.models.js";
+import { History } from "../models/history.models.js";
 import mongoose from "mongoose";
 
-// Create a new swap request
+// ===========================================
+// CREATE SWAP REQUEST
+// ===========================================
 const createSwapRequest = asyncHandler(async (req, res) => {
-  const { requestedItemId, requesterItemId, message } = req.body;
+  const { itemToBeSwappedForId, itemToBeSwappedId, message } = req.body;
   const requesterId = req.user._id;
 
   // Validation
-  if (!requestedItemId || !requesterItemId) {
-    throw new ApiError(400, "Both items are required for swap request");
+  if (!itemToBeSwappedForId || !itemToBeSwappedId) {
+    throw new ApiError(400, "Both item IDs are required");
   }
 
-  if (!mongoose.Types.ObjectId.isValid(requestedItemId) || !mongoose.Types.ObjectId.isValid(requesterItemId)) {
-    throw new ApiError(400, "Invalid item IDs");
+  if (!mongoose.Types.ObjectId.isValid(itemToBeSwappedForId) || 
+      !mongoose.Types.ObjectId.isValid(itemToBeSwappedId)) {
+    throw new ApiError(400, "Invalid item ID format");
   }
 
-  // Check if items exist
-  const requestedItem = await Item.findById(requestedItemId);
-  const requesterItem = await Item.findById(requesterItemId);
+  // Find the item the user wants to swap for
+  const itemToBeSwappedFor = await Item.findById(itemToBeSwappedForId)
+    .populate('ownerId', 'username fullName');
 
-  if (!requestedItem || !requesterItem) {
-    throw new ApiError(404, "One or both items not found");
+  if (!itemToBeSwappedFor) {
+    throw new ApiError(404, "Item you want to swap for not found");
   }
 
-  // Check if user owns the requester item
-  if (requesterItem.ownerId.toString() !== requesterId.toString()) {
+  // Find the user's item they want to swap
+  const itemToBeSwapped = await Item.findById(itemToBeSwappedId);
+
+  if (!itemToBeSwapped) {
+    throw new ApiError(404, "Your item not found");
+  }
+
+  // Check if user owns the item they want to swap
+  if (itemToBeSwapped.ownerId.toString() !== requesterId.toString()) {
     throw new ApiError(403, "You can only swap items you own");
   }
 
-  // Check if user is trying to swap with their own item
-  if (requestedItem.ownerId.toString() === requesterId.toString()) {
-    throw new ApiError(400, "You cannot swap with your own item");
+  // Check if user is trying to swap with themselves
+  if (itemToBeSwappedFor.ownerId._id.toString() === requesterId.toString()) {
+    throw new ApiError(400, "You cannot swap with yourself");
   }
 
-  // Check if requested item is available for swap
-  if (!requestedItem.availableForSwap) {
+  // Check if the item is available for swap
+  const listingForItem = await ListingRequest.findOne({
+    itemId: itemToBeSwappedForId,
+    isLive: true
+  });
+
+  if (!listingForItem) {
+    throw new ApiError(400, "Item is not available for swap");
+  }
+
+  if (!["for_swap", "both"].includes(listingForItem.listingType)) {
     throw new ApiError(400, "This item is not available for swap");
   }
 
-  // Check if there's already a pending swap request for these items
-  const existingRequest = await SwapRequest.findOne({
-    requesterId,
-    requestedItemId,
-    requesterItemId,
-    status: "pending"
+  // Check for existing swap request
+  const existingSwapRequest = await SwapRequest.findOne({
+    $or: [
+      {
+        itemToBeSwapped: itemToBeSwappedId,
+        itemToBeSwappedFor: itemToBeSwappedForId,
+        requesterId: requesterId,
+        responderId: itemToBeSwappedFor.ownerId._id
+      },
+      {
+        itemToBeSwapped: itemToBeSwappedForId,
+        itemToBeSwappedFor: itemToBeSwappedId,
+        requesterId: requesterId,
+        responderId: itemToBeSwappedFor.ownerId._id
+      }
+    ],
+    isAccepted: { $ne: true }
   });
 
-  if (existingRequest) {
-    throw new ApiError(400, "You have already sent a swap request for these items");
+  if (existingSwapRequest) {
+    throw new ApiError(400, "A swap request already exists for these items");
   }
 
-  // Create swap request
+  // Create the swap request
   const swapRequest = await SwapRequest.create({
-    requesterId,
-    requesterItemId,
-    requestedItemId,
-    requesterMessage: message
+    itemToBeSwapped: itemToBeSwappedId,
+    itemToBeSwappedFor: itemToBeSwappedForId,
+    requesterId: requesterId,
+    responderId: itemToBeSwappedFor.ownerId._id,
+    message: message,
+    isAccepted: false
   });
 
-  // Populate the swap request with item and user details
-  const populatedRequest = await SwapRequest.findById(swapRequest._id)
+  // Populate and return
+  const populatedSwapRequest = await SwapRequest.findById(swapRequest._id)
     .populate({
-      path: 'requesterId',
-      select: 'username fullName avatar'
+      path: 'itemToBeSwapped',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
     })
     .populate({
-      path: 'requesterItemId',
-      select: 'title description images category type size condition'
+      path: 'itemToBeSwappedFor',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
     })
-    .populate({
-      path: 'requestedItemId',
-      select: 'title description images category type size condition ownerId',
-      populate: {
-        path: 'ownerId',
-        select: 'username fullName avatar'
-      }
-    });
+    .populate('requesterId', 'username fullName avatar')
+    .populate('responderId', 'username fullName avatar');
 
   return res.status(201).json(
-    new ApiResponse(201, populatedRequest, "Swap request created successfully")
+    new ApiResponse(201, populatedSwapRequest, "Swap request created successfully")
   );
 });
 
-// Get user's swap requests (sent by user)
-const getMySwapRequests = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status } = req.query;
+// ===========================================
+// GET USER'S SWAP REQUESTS
+// ===========================================
+const getUserSwapRequests = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+  const { page = 1, limit = 10, type = "all" } = req.query;
 
-  const query = { requesterId: userId };
-  if (status) query.status = status;
+  let query = {};
+  
+  switch (type) {
+    case "sent":
+      query.requesterId = userId;
+      break;
+    case "received":
+      query.responderId = userId;
+      break;
+    default:
+      query.$or = [{ requesterId: userId }, { responderId: userId }];
+  }
 
   const swapRequests = await SwapRequest.find(query)
     .populate({
-      path: 'requesterItemId',
-      select: 'title description images category type size condition'
+      path: 'itemToBeSwapped',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
     })
     .populate({
-      path: 'requestedItemId',
-      select: 'title description images category type size condition ownerId',
-      populate: {
-        path: 'ownerId',
-        select: 'username fullName avatar'
-      }
+      path: 'itemToBeSwappedFor',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
     })
+    .populate('requesterId', 'username fullName avatar')
+    .populate('responderId', 'username fullName avatar')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit);
@@ -118,161 +155,226 @@ const getMySwapRequests = asyncHandler(async (req, res) => {
     new ApiResponse(200, {
       swapRequests,
       totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      currentPage: parseInt(page),
       total
     }, "Swap requests retrieved successfully")
   );
 });
 
-// Get swap requests for user's items (received by user)
-const getReceivedSwapRequests = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status } = req.query;
+// ===========================================
+// GET SINGLE SWAP REQUEST
+// ===========================================
+const getSwapRequest = asyncHandler(async (req, res) => {
+  const { swapRequestId } = req.params;
   const userId = req.user._id;
 
-  // Find items owned by the user
-  const userItems = await Item.find({ ownerId: userId }).select('_id');
-  const userItemIds = userItems.map(item => item._id);
-
-  const query = { 
-    requestedItemId: { $in: userItemIds },
-    status: status || { $in: ['pending', 'accepted', 'rejected'] }
-  };
-
-  const swapRequests = await SwapRequest.find(query)
-    .populate({
-      path: 'requesterId',
-      select: 'username fullName avatar'
-    })
-    .populate({
-      path: 'requesterItemId',
-      select: 'title description images category type size condition'
-    })
-    .populate({
-      path: 'requestedItemId',
-      select: 'title description images category type size condition'
-    })
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-
-  const total = await SwapRequest.countDocuments(query);
-
-  return res.status(200).json(
-    new ApiResponse(200, {
-      swapRequests,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
-    }, "Received swap requests retrieved successfully")
-  );
-});
-
-// Accept or reject a swap request
-const respondToSwapRequest = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
-  const { action, message } = req.body; // action: 'accept' or 'reject'
-  const userId = req.user._id;
-
-  if (!['accept', 'reject'].includes(action)) {
-    throw new ApiError(400, "Action must be 'accept' or 'reject'");
+  if (!mongoose.Types.ObjectId.isValid(swapRequestId)) {
+    throw new ApiError(400, "Invalid swap request ID");
   }
 
-  if (!mongoose.Types.ObjectId.isValid(requestId)) {
-    throw new ApiError(400, "Invalid request ID");
-  }
-
-  const swapRequest = await SwapRequest.findById(requestId)
-    .populate('requestedItemId');
+  const swapRequest = await SwapRequest.findById(swapRequestId)
+    .populate({
+      path: 'itemToBeSwapped',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
+    })
+    .populate({
+      path: 'itemToBeSwappedFor',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
+    })
+    .populate('requesterId', 'username fullName avatar')
+    .populate('responderId', 'username fullName avatar');
 
   if (!swapRequest) {
     throw new ApiError(404, "Swap request not found");
   }
 
-  // Check if user owns the requested item
-  if (swapRequest.requestedItemId.ownerId.toString() !== userId.toString()) {
-    throw new ApiError(403, "You can only respond to requests for your items");
+  // Check if user is involved in this swap request
+  if (swapRequest.requesterId._id.toString() !== userId.toString() && 
+      swapRequest.responderId._id.toString() !== userId.toString()) {
+    throw new ApiError(403, "You can only view swap requests you're involved in");
   }
 
-  // Check if request is still pending
-  if (swapRequest.status !== 'pending') {
-    throw new ApiError(400, "This request has already been responded to");
+  return res.status(200).json(
+    new ApiResponse(200, swapRequest, "Swap request retrieved successfully")
+  );
+});
+
+// ===========================================
+// ACCEPT SWAP REQUEST
+// ===========================================
+const acceptSwapRequest = asyncHandler(async (req, res) => {
+  const { swapRequestId } = req.params;
+  const responderId = req.user._id;
+
+  if (!mongoose.Types.ObjectId.isValid(swapRequestId)) {
+    throw new ApiError(400, "Invalid swap request ID");
   }
 
-  const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+  const swapRequest = await SwapRequest.findById(swapRequestId)
+    .populate('itemToBeSwapped')
+    .populate('itemToBeSwappedFor');
 
-  // Update the swap request
-  const updatedRequest = await SwapRequest.findByIdAndUpdate(
-    requestId,
+  if (!swapRequest) {
+    throw new ApiError(404, "Swap request not found");
+  }
+
+  // Check if the user is the responder
+  if (swapRequest.responderId.toString() !== responderId.toString()) {
+    throw new ApiError(403, "You can only accept swap requests for your items");
+  }
+
+  if (swapRequest.isAccepted) {
+    throw new ApiError(400, "Swap request has already been accepted");
+  }
+
+  // Check if both items are still available
+  const itemToBeSwappedListing = await ListingRequest.findOne({
+    itemId: swapRequest.itemToBeSwapped._id,
+    isLive: true
+  });
+
+  const itemToBeSwappedForListing = await ListingRequest.findOne({
+    itemId: swapRequest.itemToBeSwappedFor._id,
+    isLive: true
+  });
+
+  if (!itemToBeSwappedListing || !itemToBeSwappedForListing) {
+    throw new ApiError(400, "One or both items are no longer available");
+  }
+
+  // Accept the swap request
+  swapRequest.isAccepted = true;
+  await swapRequest.save();
+
+  // Transfer ownership of items
+  await Item.findByIdAndUpdate(swapRequest.itemToBeSwapped._id, {
+    ownerId: swapRequest.responderId
+  });
+
+  await Item.findByIdAndUpdate(swapRequest.itemToBeSwappedFor._id, {
+    ownerId: swapRequest.requesterId
+  });
+
+  // Mark listings as not live
+  await ListingRequest.findByIdAndUpdate(itemToBeSwappedListing._id, {
+    isLive: false
+  });
+
+  await ListingRequest.findByIdAndUpdate(itemToBeSwappedForListing._id, {
+    isLive: false
+  });
+
+  // Create history records for both users
+  await History.create([
     {
-      status: newStatus,
-      message: message || (action === 'accept' ? 'Swap request accepted!' : 'Swap request rejected.'),
-      isReadByOwner: true
+      userId: swapRequest.requesterId,
+      action: "swapped",
+      itemGivenId: swapRequest.itemToBeSwapped._id,
+      itemReceivedId: swapRequest.itemToBeSwappedFor._id,
+      otherUserId: swapRequest.responderId,
+      swapRequestId: swapRequest._id
     },
-    { new: true }
-  ).populate([
     {
-      path: 'requesterId',
-      select: 'username fullName avatar'
-    },
-    {
-      path: 'requesterItemId',
-      select: 'title description images category type size condition'
-    },
-    {
-      path: 'requestedItemId',
-      select: 'title description images category type size condition'
+      userId: swapRequest.responderId,
+      action: "swapped",
+      itemGivenId: swapRequest.itemToBeSwappedFor._id,
+      itemReceivedId: swapRequest.itemToBeSwapped._id,
+      otherUserId: swapRequest.requesterId,
+      swapRequestId: swapRequest._id
     }
   ]);
 
+  // Return populated swap request
+  const updatedSwapRequest = await SwapRequest.findById(swapRequestId)
+    .populate({
+      path: 'itemToBeSwapped',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
+    })
+    .populate({
+      path: 'itemToBeSwappedFor',
+      populate: { path: 'ownerId', select: 'username fullName avatar' }
+    })
+    .populate('requesterId', 'username fullName avatar')
+    .populate('responderId', 'username fullName avatar');
+
   return res.status(200).json(
-    new ApiResponse(200, updatedRequest, `Swap request ${action}ed successfully`)
+    new ApiResponse(200, updatedSwapRequest, "Swap request accepted successfully")
   );
 });
 
-// Mark swap request as read
-const markAsRead = asyncHandler(async (req, res) => {
-  const { requestId } = req.params;
-  const userId = req.user._id;
+// ===========================================
+// REJECT SWAP REQUEST
+// ===========================================
+const rejectSwapRequest = asyncHandler(async (req, res) => {
+  const { swapRequestId } = req.params;
+  const responderId = req.user._id;
 
-  if (!mongoose.Types.ObjectId.isValid(requestId)) {
-    throw new ApiError(400, "Invalid request ID");
+  if (!mongoose.Types.ObjectId.isValid(swapRequestId)) {
+    throw new ApiError(400, "Invalid swap request ID");
   }
 
-  const swapRequest = await SwapRequest.findById(requestId);
+  const swapRequest = await SwapRequest.findById(swapRequestId);
 
   if (!swapRequest) {
     throw new ApiError(404, "Swap request not found");
   }
 
-  // Determine which user is marking as read
-  let updateField = {};
-  if (swapRequest.requesterId.toString() === userId.toString()) {
-    updateField = { isReadByRequester: true };
-  } else {
-    // Check if user owns the requested item
-    const requestedItem = await Item.findById(swapRequest.requestedItemId);
-    if (requestedItem && requestedItem.ownerId.toString() === userId.toString()) {
-      updateField = { isReadByOwner: true };
-    } else {
-      throw new ApiError(403, "You can only mark your own requests as read");
-    }
+  // Check if the user is the responder
+  if (swapRequest.responderId.toString() !== responderId.toString()) {
+    throw new ApiError(403, "You can only reject swap requests for your items");
   }
 
-  const updatedRequest = await SwapRequest.findByIdAndUpdate(
-    requestId,
-    updateField,
-    { new: true }
-  );
+  if (swapRequest.isAccepted) {
+    throw new ApiError(400, "Cannot reject an already accepted swap request");
+  }
+
+  // Delete the swap request
+  await SwapRequest.findByIdAndDelete(swapRequestId);
 
   return res.status(200).json(
-    new ApiResponse(200, updatedRequest, "Marked as read successfully")
+    new ApiResponse(200, {}, "Swap request rejected successfully")
+  );
+});
+
+// ===========================================
+// CANCEL SWAP REQUEST
+// ===========================================
+const cancelSwapRequest = asyncHandler(async (req, res) => {
+  const { swapRequestId } = req.params;
+  const requesterId = req.user._id;
+
+  if (!mongoose.Types.ObjectId.isValid(swapRequestId)) {
+    throw new ApiError(400, "Invalid swap request ID");
+  }
+
+  const swapRequest = await SwapRequest.findById(swapRequestId);
+
+  if (!swapRequest) {
+    throw new ApiError(404, "Swap request not found");
+  }
+
+  // Check if the user is the requester
+  if (swapRequest.requesterId.toString() !== requesterId.toString()) {
+    throw new ApiError(403, "You can only cancel your own swap requests");
+  }
+
+  if (swapRequest.isAccepted) {
+    throw new ApiError(400, "Cannot cancel an already accepted swap request");
+  }
+
+  // Delete the swap request
+  await SwapRequest.findByIdAndDelete(swapRequestId);
+
+  return res.status(200).json(
+    new ApiResponse(200, {}, "Swap request cancelled successfully")
   );
 });
 
 export {
   createSwapRequest,
-  getMySwapRequests,
-  getReceivedSwapRequests,
-  respondToSwapRequest,
-  markAsRead
+  getUserSwapRequests,
+  getSwapRequest,
+  acceptSwapRequest,
+  rejectSwapRequest,
+  cancelSwapRequest,
 }; 

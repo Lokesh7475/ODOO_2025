@@ -7,26 +7,26 @@ const swapRequestSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    requesterItemId: {
+    responderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    itemToBeSwapped: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Item",
       required: true,
     },
-    requestedItemId: {
+    itemToBeSwappedFor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Item",
       required: true,
     },
-    status: {
-      type: String,
-      enum: ["pending", "accepted", "rejected", "completed"],
-      default: "pending",
+    isAccepted: {
+      type: Boolean,
+      default: false,
     },
     message: {
-      type: String,
-      trim: true,
-    },
-    requesterMessage: {
       type: String,
       trim: true,
     },
@@ -34,7 +34,7 @@ const swapRequestSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isReadByOwner: {
+    isReadByResponder: {
       type: Boolean,
       default: false,
     },
@@ -42,8 +42,9 @@ const swapRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for efficient queries
-swapRequestSchema.index({ requesterId: 1, status: 1 });
-swapRequestSchema.index({ "requestedItemId.ownerId": 1, status: 1 });
+// Indexes for efficient queries
+swapRequestSchema.index({ requesterId: 1, isAccepted: 1 });
+swapRequestSchema.index({ responderId: 1, isAccepted: 1 });
+swapRequestSchema.index({ itemToBeSwapped: 1, itemToBeSwappedFor: 1 });
 
 export const SwapRequest = mongoose.model("SwapRequest", swapRequestSchema);

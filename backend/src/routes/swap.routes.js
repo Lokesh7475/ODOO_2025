@@ -1,10 +1,11 @@
 import { Router } from "express";
 import {
   createSwapRequest,
-  getMySwapRequests,
-  getReceivedSwapRequests,
-  respondToSwapRequest,
-  markAsRead,
+  getUserSwapRequests,
+  getSwapRequest,
+  acceptSwapRequest,
+  rejectSwapRequest,
+  cancelSwapRequest,
 } from "../controllers/swap.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -16,16 +17,19 @@ router.use(verifyJWT);
 // Create a new swap request
 router.route("/create").post(createSwapRequest);
 
-// Get user's swap requests (sent by user)
-router.route("/my-requests").get(getMySwapRequests);
+// Get user's swap requests (all, sent, or received)
+router.route("/").get(getUserSwapRequests);
 
-// Get swap requests for user's items (received by user)
-router.route("/received").get(getReceivedSwapRequests);
+// Get single swap request
+router.route("/:swapRequestId").get(getSwapRequest);
 
-// Respond to a swap request (accept/reject)
-router.route("/:requestId/respond").patch(respondToSwapRequest);
+// Accept a swap request
+router.route("/:swapRequestId/accept").patch(acceptSwapRequest);
 
-// Mark swap request as read
-router.route("/:requestId/read").patch(markAsRead);
+// Reject a swap request
+router.route("/:swapRequestId/reject").patch(rejectSwapRequest);
+
+// Cancel a swap request (by requester)
+router.route("/:swapRequestId/cancel").patch(cancelSwapRequest);
 
 export default router; 
