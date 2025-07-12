@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getListings } from "../services/listingService";
+import { getListings } from "./services/listingService";
 
 const categories = [
   "All",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { FaHeart, FaUserCircle, FaArrowLeft, FaImage } from "react-icons/fa";
-import { getListing } from "../services/listingService";
+import { getListing } from "./services/listingService";
 
 export default function ProductDetailPage() {
   const { id } = useParams();

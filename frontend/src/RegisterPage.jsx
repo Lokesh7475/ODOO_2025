@@ -7,7 +7,7 @@ import {
   FaUpload,
   FaTimes,
 } from "react-icons/fa";
-import { registerUser } from "../services/userService";
+import { registerUser } from "./services/userService";
 
 export default function RegisterPage() {
   const navigate = useNavigate();

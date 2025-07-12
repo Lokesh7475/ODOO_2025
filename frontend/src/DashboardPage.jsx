@@ -13,7 +13,7 @@ import {
   getUserListings,
   deleteListing,
   toggleListingStatus,
-} from "../services/dashboardService";
+} from "./services/dashboardService";
 
 export default function DashboardPage() {
   const navigate = useNavigate();

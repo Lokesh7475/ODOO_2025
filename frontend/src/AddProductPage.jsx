@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FaUpload, FaTrash, FaImage } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { createListing } from "../services/listingService";
+import { createListing } from "./services/listingService";
 
 const categories = [
   "Tops",
