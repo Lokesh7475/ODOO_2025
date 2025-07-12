@@ -14,6 +14,11 @@ import {
   deleteListing,
   toggleListingStatus,
 } from "./services/dashboardService";
+import {
+  getMySwapRequests,
+  getReceivedSwapRequests,
+  respondToSwapRequest,
+} from "./services/swapService";
 import Navbar from "./components/Navbar";
 import { useAuth } from "./context/AuthContext";
 
@@ -32,6 +37,11 @@ export default function DashboardPage() {
   // User listings
   const [userListings, setUserListings] = useState([]);
   const [listingsLoading, setListingsLoading] = useState(false);
+
+  // Swap requests
+  const [mySwapRequests, setMySwapRequests] = useState([]);
+  const [receivedSwapRequests, setReceivedSwapRequests] = useState([]);
+  const [swapRequestsLoading, setSwapRequestsLoading] = useState(false);
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -116,6 +126,37 @@ export default function DashboardPage() {
     }
   };
 
+  // Fetch swap requests
+  const fetchSwapRequests = async () => {
+    try {
+      setSwapRequestsLoading(true);
+      const [myRequests, receivedRequests] = await Promise.all([
+        getMySwapRequests(),
+        getReceivedSwapRequests(),
+      ]);
+
+      setMySwapRequests(myRequests.data.swapRequests || []);
+      setReceivedSwapRequests(receivedRequests.data.swapRequests || []);
+    } catch (error) {
+      console.error("Error fetching swap requests:", error);
+      setError("Failed to load swap requests.");
+    } finally {
+      setSwapRequestsLoading(false);
+    }
+  };
+
+  // Handle swap request response
+  const handleSwapResponse = async (requestId, action, message = "") => {
+    try {
+      await respondToSwapRequest(requestId, action, message);
+      // Refresh swap requests
+      fetchSwapRequests();
+    } catch (error) {
+      console.error("Error responding to swap request:", error);
+      setError("Failed to respond to swap request.");
+    }
+  };
+
   // Load data on component mount
   useEffect(() => {
     fetchDashboardData();
@@ -125,6 +166,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab === "listings") {
       fetchUserListings();
+    } else if (activeTab === "swap-requests") {
+      fetchSwapRequests();
     }
   }, [activeTab]);
 
@@ -282,6 +325,21 @@ export default function DashboardPage() {
                 </div>
               </button>
               <button
+                onClick={() => setActiveTab("swap-requests")}
+                className={`flex-1 px-6 py-4 text-left font-medium transition ${
+                  activeTab === "swap-requests"
+                    ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50"
+                    : "text-slate-600 hover:text-indigo-600 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>Swap Requests</span>
+                  <span className="bg-slate-200 text-slate-700 text-xs px-2 py-1 rounded-full">
+                    {mySwapRequests.length + receivedSwapRequests.length}
+                  </span>
+                </div>
+              </button>
+              <button
                 onClick={() => setActiveTab("history")}
                 className={`flex-1 px-6 py-4 text-left font-medium transition ${
                   activeTab === "history"
@@ -386,6 +444,319 @@ export default function DashboardPage() {
                         </article>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "swap-requests" && (
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 mb-6">
+                  Swap Requests
+                </h2>
+
+                {swapRequestsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Received Swap Requests */}
+                    {receivedSwapRequests.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                          Requests for Your Items ({receivedSwapRequests.length}
+                          )
+                        </h3>
+                        <div className="space-y-4">
+                          {receivedSwapRequests.map((request) => (
+                            <div
+                              key={request._id}
+                              className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition"
+                            >
+                              <div className="flex items-start gap-4">
+                                {/* Requester Info */}
+                                <div className="flex-shrink-0">
+                                  {request.requesterId.avatar ? (
+                                    <img
+                                      src={request.requesterId.avatar}
+                                      alt={request.requesterId.fullName}
+                                      className="w-12 h-12 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
+                                      <FaUserCircle className="text-slate-400" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-semibold text-slate-800">
+                                      {request.requesterId.fullName} wants to
+                                      swap
+                                    </h4>
+                                    <span
+                                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                        request.status === "pending"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : request.status === "accepted"
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-red-100 text-red-700"
+                                      }`}
+                                    >
+                                      {request.status.charAt(0).toUpperCase() +
+                                        request.status.slice(1)}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-sm text-slate-600 mb-3">
+                                    {new Date(
+                                      request.createdAt
+                                    ).toLocaleDateString()}
+                                  </p>
+
+                                  {/* Items being swapped */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-slate-50 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-slate-800 mb-2">
+                                        They want your:
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {request.requestedItemId.images &&
+                                          request.requestedItemId.images
+                                            .length > 0 && (
+                                            <img
+                                              src={
+                                                request.requestedItemId
+                                                  .images[0]
+                                              }
+                                              alt={
+                                                request.requestedItemId.title
+                                              }
+                                              className="w-8 h-8 object-cover rounded"
+                                            />
+                                          )}
+                                        <span className="text-sm text-slate-700">
+                                          {request.requestedItemId.title}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-indigo-50 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-indigo-800 mb-2">
+                                        They're offering:
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {request.requesterItemId.images &&
+                                          request.requesterItemId.images
+                                            .length > 0 && (
+                                            <img
+                                              src={
+                                                request.requesterItemId
+                                                  .images[0]
+                                              }
+                                              alt={
+                                                request.requesterItemId.title
+                                              }
+                                              className="w-8 h-8 object-cover rounded"
+                                            />
+                                          )}
+                                        <span className="text-sm text-indigo-700">
+                                          {request.requesterItemId.title}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {request.requesterMessage && (
+                                    <p className="text-sm text-slate-600 mb-3 italic">
+                                      "{request.requesterMessage}"
+                                    </p>
+                                  )}
+
+                                  {/* Action buttons for pending requests */}
+                                  {request.status === "pending" && (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() =>
+                                          handleSwapResponse(
+                                            request._id,
+                                            "accept"
+                                          )
+                                        }
+                                        className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition"
+                                      >
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleSwapResponse(
+                                            request._id,
+                                            "reject"
+                                          )
+                                        }
+                                        className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {request.message &&
+                                    request.status !== "pending" && (
+                                      <p className="text-sm text-slate-600 mt-2">
+                                        Response: {request.message}
+                                      </p>
+                                    )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* My Swap Requests */}
+                    {mySwapRequests.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                          My Requests ({mySwapRequests.length})
+                        </h3>
+                        <div className="space-y-4">
+                          {mySwapRequests.map((request) => (
+                            <div
+                              key={request._id}
+                              className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition"
+                            >
+                              <div className="flex items-start gap-4">
+                                {/* Owner Info */}
+                                <div className="flex-shrink-0">
+                                  {request.requestedItemId.ownerId.avatar ? (
+                                    <img
+                                      src={
+                                        request.requestedItemId.ownerId.avatar
+                                      }
+                                      alt={
+                                        request.requestedItemId.ownerId.fullName
+                                      }
+                                      className="w-12 h-12 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
+                                      <FaUserCircle className="text-slate-400" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-semibold text-slate-800">
+                                      Request to{" "}
+                                      {request.requestedItemId.ownerId.fullName}
+                                    </h4>
+                                    <span
+                                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                        request.status === "pending"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : request.status === "accepted"
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-red-100 text-red-700"
+                                      }`}
+                                    >
+                                      {request.status.charAt(0).toUpperCase() +
+                                        request.status.slice(1)}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-sm text-slate-600 mb-3">
+                                    {new Date(
+                                      request.createdAt
+                                    ).toLocaleDateString()}
+                                  </p>
+
+                                  {/* Items being swapped */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-slate-50 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-slate-800 mb-2">
+                                        You want their:
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {request.requestedItemId.images &&
+                                          request.requestedItemId.images
+                                            .length > 0 && (
+                                            <img
+                                              src={
+                                                request.requestedItemId
+                                                  .images[0]
+                                              }
+                                              alt={
+                                                request.requestedItemId.title
+                                              }
+                                              className="w-8 h-8 object-cover rounded"
+                                            />
+                                          )}
+                                        <span className="text-sm text-slate-700">
+                                          {request.requestedItemId.title}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-indigo-50 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-indigo-800 mb-2">
+                                        You're offering:
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {request.requesterItemId.images &&
+                                          request.requesterItemId.images
+                                            .length > 0 && (
+                                            <img
+                                              src={
+                                                request.requesterItemId
+                                                  .images[0]
+                                              }
+                                              alt={
+                                                request.requesterItemId.title
+                                              }
+                                              className="w-8 h-8 object-cover rounded"
+                                            />
+                                          )}
+                                        <span className="text-sm text-indigo-700">
+                                          {request.requesterItemId.title}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {request.requesterMessage && (
+                                    <p className="text-sm text-slate-600 mb-3 italic">
+                                      Your message: "{request.requesterMessage}"
+                                    </p>
+                                  )}
+
+                                  {request.message &&
+                                    request.status !== "pending" && (
+                                      <p className="text-sm text-slate-600 mt-2">
+                                        Response: {request.message}
+                                      </p>
+                                    )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {receivedSwapRequests.length === 0 &&
+                      mySwapRequests.length === 0 && (
+                        <div className="text-center py-8 text-slate-500">
+                          <p>No swap requests yet.</p>
+                          <p className="text-sm mt-2">
+                            Start browsing items to make swap requests!
+                          </p>
+                        </div>
+                      )}
                   </div>
                 )}
               </div>

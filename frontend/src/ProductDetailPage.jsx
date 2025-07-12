@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { FaHeart, FaUserCircle, FaArrowLeft, FaImage } from "react-icons/fa";
+import {
+  FaHeart,
+  FaUserCircle,
+  FaArrowLeft,
+  FaImage,
+  FaExchangeAlt,
+} from "react-icons/fa";
 import { getListing } from "./services/listingService";
 import Navbar from "./components/Navbar";
+import SwapRequestModal from "./components/SwapRequestModal";
+import { useAuth } from "./context/AuthContext";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mainImg, setMainImg] = useState("");
+  const [showSwapModal, setShowSwapModal] = useState(false);
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -41,8 +51,18 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const handleRequestSwap = () => {
-    // TODO: Implement swap request functionality
-    alert("Swap request functionality coming soon!");
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    // Check if user is trying to swap their own item
+    if (user && item.ownerId._id === user._id) {
+      alert("You cannot swap with your own item!");
+      return;
+    }
+
+    setShowSwapModal(true);
   };
 
   const handleAddToWishlist = () => {
@@ -250,13 +270,18 @@ export default function ProductDetailPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <button
-                className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded shadow hover:bg-indigo-700 transition text-center"
+                className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded shadow hover:bg-indigo-700 transition text-center flex items-center justify-center gap-2"
                 onClick={handleRequestSwap}
                 disabled={!listing.isLive}
               >
-                {listing.listingType === "for_sale"
-                  ? "Buy Now"
-                  : "Request Swap"}
+                {listing.listingType === "for_sale" ? (
+                  "Buy Now"
+                ) : (
+                  <>
+                    <FaExchangeAlt />
+                    Request Swap
+                  </>
+                )}
               </button>
               <button
                 className="flex-1 bg-white border border-indigo-600 text-indigo-600 font-semibold py-3 rounded shadow hover:bg-indigo-50 transition flex items-center justify-center gap-2"
@@ -300,6 +325,19 @@ export default function ProductDetailPage() {
           </div>
         </section>
       </main>
+
+      {/* Swap Request Modal */}
+      {showSwapModal && listing && (
+        <SwapRequestModal
+          isOpen={showSwapModal}
+          onClose={() => setShowSwapModal(false)}
+          requestedItem={item}
+          onSuccess={() => {
+            // Optionally refresh data or show success message
+            console.log("Swap request sent successfully!");
+          }}
+        />
+      )}
     </div>
   );
 }
