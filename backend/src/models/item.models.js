@@ -12,6 +12,9 @@ const itemSchema = new mongoose.Schema(
     category: { type: String },
     type: { type: String, enum: ["Male", "Female", "Unisex"] },
     size: { type: String },
+    condition: { type: String, enum: ["New", "Like New", "Good", "Fair", "Used"] },
+    price: { type: Number },
+    availableForSwap: { type: Boolean, default: true },
     tags: [{ type: String }],
     images: [{ type: String }], // Cloudinary URLs
   },

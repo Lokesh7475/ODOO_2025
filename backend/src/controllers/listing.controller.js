@@ -9,7 +9,7 @@ import mongoose from "mongoose";
 
 // Create a new listing
 const createListing = asyncHandler(async (req, res) => {
-  const { title, description, category, type, size, tags, listingType, price } = req.body;
+  const { title, description, category, type, size, condition, tags, listingType, price, availableForSwap } = req.body;
 
   // Validation
   if (!title || !listingType) {
@@ -39,9 +39,11 @@ const createListing = asyncHandler(async (req, res) => {
     category,
     type,
     size,
+    condition,
+    price: price ? parseFloat(price) : null,
+    availableForSwap: availableForSwap === 'true' || availableForSwap === true,
     tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-    images: imageUrls,
-    price: price || null
+    images: imageUrls
   });
 
   // Create listing request
