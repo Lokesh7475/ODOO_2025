@@ -12,8 +12,6 @@ import {
   updateUserAvatar,
 } from "../controllers/user.controller.js";
 
-import { getDashboardData } from "../controllers/dashboard.controller.js";
-
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -45,8 +43,5 @@ router
 
 // working
 router.route("/c/:username").get(verifyJWT, getUserProfile);
-
-// Dashboard route
-router.route("/dashboard").get(verifyJWT, getDashboardData);
 
 export default router;
