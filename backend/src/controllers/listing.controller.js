@@ -103,6 +103,7 @@ const getListings = asyncHandler(async (req, res) => {
 // Get single listing by ID
 const getListing = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  console.log(id)
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(400, "Invalid listing ID");

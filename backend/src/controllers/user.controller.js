@@ -90,7 +90,6 @@ const loginUser = asyncHandler(async (req, res) => {
   // validate password
   // access and refresh token
   // send cookies
-  // console.log(req)
   const { email, username, password } = req.body;
 
   if (!(email || username)) {
